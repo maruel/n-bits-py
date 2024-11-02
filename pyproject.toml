@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "n_bits"
+version = "0.1.0"
+authors = [
+    { name="Marc-Antoine Ruel", email="g@maruel.ca" },
+]
+description = "TODO"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.scripts]
+n-bits = "n_bits.main:main"
+
+[project.urls]
+Homepage = "https://github.com/maruel/n-bits-py"
+Issues = "https://github.com/maruel/n-bits-py/issues"
+
