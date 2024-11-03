@@ -24,9 +24,3 @@ from n_bits import my_function
 
 print(my_function())
 ```
-
-## Development
-
-1. Clone the repository
-2. Install development dependencies: `pip install -e ".[dev]"`
-3. Run tests: `pytest`
