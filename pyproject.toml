@@ -24,3 +24,12 @@ n-bits = "n_bits.main:main"
 Homepage = "https://github.com/maruel/n-bits-py"
 Issues = "https://github.com/maruel/n-bits-py/issues"
 
+
+[project.optional-dependencies]
+dev = [
+    "black>=24.10.0",
+    "flake8>=7.1.1",
+    "pytest>=2.0.2",
+    "pytest-cov>=6.0.0",
+]
+

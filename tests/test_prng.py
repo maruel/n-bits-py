@@ -2,11 +2,13 @@ import pytest
 import numpy as np
 from n_bits.prng import XoshiroStarStar, PCG32, SplitMix64
 
+
 # TODO: XoshiroStarStar is broken.
 @pytest.fixture(params=[PCG32, SplitMix64])
 def generator(request):
     """Fixture that provides each PRNG class for testing"""
     return request.param(seed=12345)
+
 
 def test_output_range(generator):
     """Test that all generators produce values in [0, 1)"""
@@ -15,10 +17,12 @@ def test_output_range(generator):
     assert any(x > 0.1 for x in samples), "Poor distribution: no values above 0.1"
     assert any(x < 0.9 for x in samples), "Poor distribution: no values below 0.9"
 
+
 def test_float32_type(generator):
     """Test that output is actually float32"""
     value = generator.next()
     assert isinstance(value, np.float32)
+
 
 def test_deterministic(generator):
     """Test that same seed produces same sequence"""
@@ -27,6 +31,7 @@ def test_deterministic(generator):
 
     for _ in range(100):
         assert gen1.next() == gen2.next()
+
 
 def test_different_seeds(generator):
     """Test that different seeds produce different sequences"""
@@ -37,6 +42,7 @@ def test_different_seeds(generator):
     samples1 = [gen1.next() for _ in range(5)]
     samples2 = [gen2.next() for _ in range(5)]
     assert samples1 != samples2
+
 
 def test_uniformity(generator):
     """Basic test for uniform distribution"""
@@ -51,11 +57,13 @@ def test_uniformity(generator):
     # This should fail less than 1% of the time for a good PRNG
     assert chi_squared < 21.67  # Critical value for p=0.01 with df=9
 
+
 def test_correlation(generator):
     """Test for obvious correlations between consecutive numbers"""
     samples = [generator.next() for _ in range(1000)]
     correlation = np.corrcoef(samples[:-1], samples[1:])[0, 1]
     assert abs(correlation) < 0.1  # Should be close to 0 for good PRNG
+
 
 def test_no_obvious_patterns(generator):
     """Test for obvious patterns in the output"""
@@ -69,6 +77,7 @@ def test_no_obvious_patterns(generator):
     diffs = np.diff(samples)
     unique_diffs = len(set(diffs))
     assert unique_diffs > 900  # Should have many unique differences
+
 
 def test_edge_cases():
     """Test edge cases and error handling"""

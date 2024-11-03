@@ -1,7 +1,7 @@
 # n-bits
 
 Algorithms to compress ML weights.
-a
+
 
 ## Installation
 
@@ -24,3 +24,6 @@ from n_bits import my_function
 
 print(my_function())
 ```
+
+Code coverage:
+[![codecov](https://codecov.io/gh/maruel/n-bits-py/graph/badge.svg?token=D54RD4K2OH)](https://codecov.io/gh/maruel/n-bits-py)

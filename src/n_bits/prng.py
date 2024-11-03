@@ -1,13 +1,16 @@
 import numpy as np
 
+
 class XoshiroStarStar:
     """
     xoshiro256** PRNG - Extremely fast, high-quality generator
     Period: 2^256 - 1
     Returns float32 values in [0, 1)
     """
+
     def __init__(self, seed):
         import time
+
         if seed is None:
             seed = int(time.time() * 1000)
 
@@ -42,14 +45,17 @@ class XoshiroStarStar:
         """Returns a float32 in [0, 1)"""
         return np.float32(self.next_int() >> 32) / np.float32(1 << 32)
 
+
 class PCG32:
     """
     PCG32 PRNG - Fast, high-quality generator with good statistical properties
     Period: 2^64
     Returns float32 values in [0, 1)
     """
+
     def __init__(self, seed):
         import time
+
         if seed is None:
             seed = int(time.time() * 1000)
 
@@ -77,14 +83,17 @@ class PCG32:
         """Returns a float32 in [0, 1)"""
         return np.float32(self.next_int()) / np.float32(0xFFFFFFFF)
 
+
 class SplitMix64:
     """
     SplitMix64 PRNG - Simple, fast generator with good statistical properties
     Period: 2^64
     Returns float32 values in [0, 1)
     """
+
     def __init__(self, seed):
         import time
+
         if seed is None:
             seed = int(time.time() * 1000)
         self.state = seed
@@ -102,12 +111,13 @@ class SplitMix64:
         """Returns a float32 in [0, 1)"""
         return np.float32(self.next_int() >> 32) / np.float32(1 << 32)
 
+
 # Usage example
 def demo_generators(seed=12345):
     generators = [
         ("Xoshiro256**", XoshiroStarStar(seed)),
         ("PCG32", PCG32(seed)),
-        ("SplitMix64", SplitMix64(seed))
+        ("SplitMix64", SplitMix64(seed)),
     ]
 
     print("Generating first 5 float32 numbers from each PRNG:")
