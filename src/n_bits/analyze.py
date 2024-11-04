@@ -18,7 +18,7 @@ def graph_histogram(t, name):
     b = bins[:-1].numpy()
     # print(b)
     # print(c)
-    terminal = f"dumb {cols} {max(10, lines-10)}"
+    terminal = f"dumb {cols} {max(10, lines - 10)}"
     try:
         gnuplotlib.plot(b, c, _set="logscale y", terminal=terminal, title=name)
     except OSError:
