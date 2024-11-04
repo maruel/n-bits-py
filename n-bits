@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -eu
+
+if [ "$VIRTUAL_ENV" = "" ]; then
+  echo "Run inside an virualenv"
+  exit 1
+fi
+
+pip install -q -e .
+n-bits "$@"

@@ -1,6 +1,6 @@
 # n-bits
 
-Algorithms to compress ML weights.
+Algorithms to better understand DNN (deep neural networks) weights.
 
 
 ## Installation
@@ -9,20 +9,30 @@ Algorithms to compress ML weights.
 pip install n_bits
 ```
 
+
 ## Usage
 
+Analyze Llama-3.2 1B:
+
 ```bash
-n-bits compress
-n-bits error
-n-bits expand
+n-bits analyze --hf-repo meta-llama/Llama-3.2-1B
 ```
+
 
 ### As a Python Package
 
 ```python
-from n_bits import my_function
+import huggingface_hub
+import safetensors
 
-print(my_function())
+from n_bits.analyze import graph_histogram
+
+# Load a tensor
+local_path = huggingface_hub.hf_hub_download(repo_id="meta-llama/Llama-3.2-1B", filename="model.safetensors")
+tensors = safetensors.torch.load_file(local_path)
+first_name = next(iter(tensors))
+first = tensors[first_name]
+graph_histogram(first, first_name)
 ```
 
 Code coverage:

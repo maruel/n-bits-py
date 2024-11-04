@@ -2,7 +2,7 @@ import math
 
 import torch
 
-import n_bits.main
+from n_bits import analyze, bits
 
 
 def encode_float_to_bfloat16_int(f: float):
@@ -10,9 +10,9 @@ def encode_float_to_bfloat16_int(f: float):
     t = torch.tensor([f], dtype=torch.bfloat16)
     assert t.numel() == 1, t.numel()
     assert len(t) == 1, len(t)
-    b = n_bits.main.read_tensor_bytes(t)
+    b = analyze.read_tensor_bytes(t)
     assert len(b) == 2, len(b)
-    return n_bits.main.bfloat16_bytes_to_int(b)
+    return bits.bfloat16_bytes_to_int(b)
 
 
 def test_bfloat16():
@@ -30,7 +30,7 @@ def test_bfloat16():
     for i, (val, expected) in enumerate(test_values):
         raw = encode_float_to_bfloat16_int(expected)
         assert raw == val, f"#{i}: 0x{val:04x} != 0x{raw:04x}"
-        actual = n_bits.main.decode_bfloat16(val)
+        actual = bits.decode_bfloat16(val)
         if math.isnan(expected):
             assert math.isnan(actual), actual
         else:
