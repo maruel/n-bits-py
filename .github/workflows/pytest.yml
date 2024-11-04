@@ -28,7 +28,7 @@ jobs:
         path: ~/.cache/pre-commit
         key: pre-commit|${{env.PYTHON_CACHE_HASH}}|${{hashFiles('.pre-commit-config.yaml')}}
     - name: Install system dependencies
-      run: sudo apt install gnuplot
+      run: sudo apt-get install -y --no-upgrade --no-install-recommends gnuplot-nox
     - name: Install python dependencies
       run: pip install -e ".[dev]"
     - name: Run tests with coverage
