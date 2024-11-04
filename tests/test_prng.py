@@ -1,3 +1,7 @@
+# Copyright 2024 Marc-Antoine Ruel. All rights reserved.
+# Use of this source code is governed under the Apache License, Version 2.0
+# that can be found in the LICENSE file.
+
 import pytest
 import numpy as np
 from n_bits.prng import XoshiroStarStar, PCG32, SplitMix64

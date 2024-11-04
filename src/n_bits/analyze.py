@@ -1,3 +1,7 @@
+# Copyright 2024 Marc-Antoine Ruel. All rights reserved.
+# Use of this source code is governed under the Apache License, Version 2.0
+# that can be found in the LICENSE file.
+
 import ctypes
 import os
 import sys
@@ -11,13 +15,14 @@ from .bits import bfloat16_bytes_to_int, decode_bfloat16
 def graph_histogram(t, name):
     cols, lines = os.get_terminal_size()
     bins = cols - 10
-    # if bfloat16:
-    t2 = t.dequantize()
-    counts, bins = t2.histogram(bins)  # , density=True)
+    try:
+        counts, bins = t.histogram(bins)
+    except RuntimeError:
+        # Necessary for "non-standard" formats like bfloat16.
+        t = t.dequantize()
+        counts, bins = t.histogram(bins)
     c = counts.numpy()
     b = bins[:-1].numpy()
-    # print(b)
-    # print(c)
     terminal = f"dumb {cols} {max(10, lines - 10)}"
     try:
         gnuplotlib.plot(b, c, _set="logscale y", terminal=terminal, title=name)
@@ -80,14 +85,16 @@ def analyze_tensors(tensors_dict):
     stats = {name: tensor_stats(t) for name, t in tensors_dict.items()}
     name_align = max(len(n) for n in tensors_dict)
     size_align = max(len(str(s[0])) for s in stats.values())
+    first_name = next(iter(tensors_dict))
+    first = tensors_dict[first_name].flatten()
+    graph_histogram(first, first_name)
+    return
     for name, (length, avg, std, m1, m2) in stats.items():
         print(
             f"{name:<{name_align}}: len={length:>{size_align}}  avg={avg:+.2f}  std={std:+.2f}  min={m1:+.2f}  max={m2:+.2f}"
         )
     print(f"- Total number of weights: {sum(s[0] for s in stats.values())}")
     print(f"- Total number of tensors: {len(tensors_dict)}")
-    first_name = next(iter(tensors_dict))
-    first = tensors_dict[first_name].flatten()
     b = read_tensor_bytes(first)
     print(f"- {first_name}: {first.numel()} in {first.dtype}; {len(b)}: {b[:10].hex()}")
     for i in range(5):
