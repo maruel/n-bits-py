@@ -30,6 +30,12 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
+    - name: Calculate python cache hash
+      run: echo "PYTHON_CACHE_HASH=$(python -VV | sha256sum | cut -d' ' -f1)" >> $GITHUB_ENV
+    - uses: actions/cache@v4
+      with:
+        path: ~/.cache/pre-commit
+        key: pre-commit|${{env.PYTHON_CACHE_HASH}}|${{hashFiles('.pre-commit-config.yaml')}}
     - name: Install system dependencies
       run: sudo apt install gnuplot
     - name: Install go depenencies
@@ -42,6 +48,5 @@ jobs:
       uses: codecov/codecov-action@v4
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-    - run: black --check src/ tests/
-    - run: flake8 src/ tests/
+    - run: pre-commit run --show-diff-on-failure --color=always
     - run: addlicense -check -c "Marc-Antoine Ruel" .

@@ -3,6 +3,7 @@
 # that can be found in the LICENSE file.
 
 import ctypes
+from dataclasses import dataclass
 import os
 import sys
 
@@ -12,7 +13,17 @@ import torch
 from .bits import bfloat16_bytes_to_int, decode_bfloat16
 
 
-def graph_histogram(t, name):
+@dataclass
+class TensorStats:
+    name: str
+    length: int
+    avg: float
+    std: float
+    min: float
+    max: float
+
+
+def graph_histogram(name: str, t: torch.Tensor):
     cols, lines = os.get_terminal_size()
     bins = cols - 10
     try:
@@ -53,7 +64,7 @@ def get_dtype_size(dtype: torch.dtype) -> int:
     return mapping[dtype]
 
 
-def read_tensor_bytes(tensor: torch.Tensor):
+def read_tensor_bytes(tensor: torch.Tensor) -> bytes:
     """Read the first n bytes from a PyTorch tensor's memory using ctypes."""
     c = tensor.cpu()
     num_bytes = c.numel() * get_dtype_size(c.dtype)
@@ -61,9 +72,9 @@ def read_tensor_bytes(tensor: torch.Tensor):
     return bytes(byte_array)
 
 
-def tensor_stats(t: torch.Tensor):
+def tensor_stats(name: str, t: torch.Tensor) -> TensorStats:
     std, mean = torch.std_mean(t)
-    return (t.numel(), mean, std, t.min(), t.max())
+    return TensorStats(name, t.numel(), mean, std, t.min(), t.max())
 
 
 def print_bfloat16_components(bfloat16_bytes: bytes):
@@ -82,18 +93,18 @@ def print_bfloat16_components(bfloat16_bytes: bytes):
 def analyze_tensors(tensors_dict):
     """Inspect and print information of tensors."""
     # Calculate the stats upfront.
-    stats = {name: tensor_stats(t) for name, t in tensors_dict.items()}
+    stats = {name: tensor_stats(name, t) for name, t in tensors_dict.items()}
     name_align = max(len(n) for n in tensors_dict)
-    size_align = max(len(str(s[0])) for s in stats.values())
+    size_align = max(len(str(s.length)) for s in stats.values())
     first_name = next(iter(tensors_dict))
     first = tensors_dict[first_name].flatten()
-    graph_histogram(first, first_name)
-    return
-    for name, (length, avg, std, m1, m2) in stats.items():
+    graph_histogram(first_name, first)
+    for name, s in stats.items():
         print(
-            f"{name:<{name_align}}: len={length:>{size_align}}  avg={avg:+.2f}  std={std:+.2f}  min={m1:+.2f}  max={m2:+.2f}"
+            f"{name:<{name_align}}: len={s.length:>{size_align}}  "
+            + f"avg={s.avg:+.2f}  std={s.std:+.2f}  min={s.min:+.2f}  max={s.max:+.2f}"
         )
-    print(f"- Total number of weights: {sum(s[0] for s in stats.values())}")
+    print(f"- Total number of weights: {sum(s.length for s in stats.values())}")
     print(f"- Total number of tensors: {len(tensors_dict)}")
     b = read_tensor_bytes(first)
     print(f"- {first_name}: {first.numel()} in {first.dtype}; {len(b)}: {b[:10].hex()}")

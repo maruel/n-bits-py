@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 def decode_bfloat16(bfloat16_val: int) -> float:
     """Decode a 16-bit bfloat16 value into its corresponding float value.
 
