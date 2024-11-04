@@ -3,10 +3,29 @@
 """Inspect a SafeTensors file: count tensors and show first weights"""
 
 import argparse
+import os
 import sys
 
+import gnuplotlib
 import huggingface_hub
 import safetensors
+
+
+def graph_histogram(t, name):
+    cols, lines = os.get_terminal_size()
+    bins = cols - 10
+    # if bfloat16:
+    t2 = t.dequantize()
+    counts, bins = t2.histogram(bins)  # , density=True)
+    c = counts.numpy()
+    b = bins[:-1].numpy()
+    # print(b)
+    # print(c)
+    terminal = f"dumb {cols} {max(10, lines-10)}"
+    try:
+        gnuplotlib.plot(b, c, _set="logscale y", terminal=terminal, title=name)
+    except OSError:
+        print("Please install gnuplot")
 
 
 def my_function():
@@ -54,17 +73,17 @@ def inspect_safetensors(file_path: str):
         total = 0
         # Get all tensor names.
         tensor_names = f.keys()
-        print(f"Total number of tensors: {len(tensor_names)}\n")
-        print("First weight of each tensor:")
-        print("-" * 50)
-        # Iterate through each tensor.
-        for name in tensor_names:
+        print(f"Total number of tensors: {len(tensor_names)}")
+        align = max(len(n) for n in tensor_names)
+        for i, name in enumerate(tensor_names):
+            # https://pytorch.org/docs/stable/torch.html#tensors
             tensor = f.get_tensor(name)
             flat = tensor.flatten()
+            # graph_histogram(flat, name)
             l = len(flat)
-            # Get first element as Python scalar.
-            first_weight = flat[0].item()
-            print(f"{name}({l}): {first_weight}")
+            print(
+                f"{name:<{align}}: {l:>8} items  avg={flat.mean():+.2f}  min={flat.min():+.2f}  max={flat.max():+.2f}"
+            )
             total += l
         print(f"Total number of weights: {total}")
 
