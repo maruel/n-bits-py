@@ -22,6 +22,13 @@ class TensorStats:
     min: float
     max: float
 
+    def __init__(self, name: str, t: torch.Tensor):
+        self.name = name
+        self.length = t.numel()
+        self.std, self.avg = torch.std_mean(t)
+        self.min = t.min()
+        self.max = t.max()
+
 
 def graph_histogram(name: str, t: torch.Tensor):
     cols, lines = os.get_terminal_size()
@@ -72,11 +79,6 @@ def read_tensor_bytes(tensor: torch.Tensor) -> bytes:
     return bytes(byte_array)
 
 
-def tensor_stats(name: str, t: torch.Tensor) -> TensorStats:
-    std, mean = torch.std_mean(t)
-    return TensorStats(name, t.numel(), mean, std, t.min(), t.max())
-
-
 def print_bfloat16_components(bfloat16_bytes: bytes):
     """Print the components and decoded value of a bfloat16 number"""
     bfloat16_val = bfloat16_bytes_to_int(bfloat16_bytes)
@@ -93,7 +95,7 @@ def print_bfloat16_components(bfloat16_bytes: bytes):
 def analyze_tensors(tensors_dict):
     """Inspect and print information of tensors."""
     # Calculate the stats upfront.
-    stats = {name: tensor_stats(name, t) for name, t in tensors_dict.items()}
+    stats = {name: TensorStats(name, t) for name, t in tensors_dict.items()}
     name_align = max(len(n) for n in tensors_dict)
     size_align = max(len(str(s.length)) for s in stats.values())
     first_name = next(iter(tensors_dict))
