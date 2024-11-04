@@ -17,15 +17,15 @@ def encode_float_to_bfloat16_int(f: float):
 
 def test_bfloat16():
     test_values = [
-        (0x3f80, 1.0),
-        (0xbf80, -1.0),
+        (0x3F80, 1.0),
+        (0xBF80, -1.0),
         (0x4000, 2.0),
-        (0x3f00, 0.5),
+        (0x3F00, 0.5),
         (0x0000, 0.0),
-        (0xc2f7, -123.5),
-        (0x7f80, float("inf")),
-        (0xff80, float("-inf")),
-        (0x7fc0, float("nan")),
+        (0xC2F7, -123.5),
+        (0x7F80, float("inf")),
+        (0xFF80, float("-inf")),
+        (0x7FC0, float("nan")),
     ]
     for i, (val, expected) in enumerate(test_values):
         raw = encode_float_to_bfloat16_int(expected)
