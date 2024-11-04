@@ -8,9 +8,15 @@ import os
 import sys
 
 import gnuplotlib
+import numpy
 import torch
 
-from .bits import bfloat16_bytes_to_int, decode_bfloat16
+from .bits import (
+    bfloat16_bytes_to_int,
+    decode_bfloat16,
+    # unpack_bfloat16,
+    # unpack_bfloat16_bytes,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,25 +32,6 @@ class TensorStats:
     def create(name: str, t: torch.Tensor):
         std, avg = torch.std_mean(t)
         return TensorStats(name, t.numel(), avg, std, t.min(), t.max())
-
-
-def graph_histogram(name: str, t: torch.Tensor):
-    cols, lines = os.get_terminal_size()
-    bins = cols - 10
-    try:
-        counts, bins = t.histogram(bins)
-    except RuntimeError:
-        # Necessary for "non-standard" formats like bfloat16.
-        t = t.dequantize()
-        counts, bins = t.histogram(bins)
-    c = counts.numpy()
-    b = bins[:-1].numpy()
-    terminal = f"dumb {cols} {max(10, lines - 10)}"
-    try:
-        gnuplotlib.plot(b, c, _set="logscale y", terminal=terminal, title=name)
-    except OSError:
-        print("Please install gnuplot", file=sys.stderr)
-        raise
 
 
 def get_dtype_size(dtype: torch.dtype) -> int:
@@ -77,6 +64,86 @@ def read_tensor_bytes(tensor: torch.Tensor) -> bytes:
     return bytes(byte_array)
 
 
+def calc_histograms_float(t: torch.Tensor):
+    if t.dtype != torch.bfloat16:
+        raise NotImplementedError(f"implement for {t.dtype}")
+    # TODO: Remapping the slice as a uint16 would probably help a lot!
+    b = read_tensor_bytes(t)
+    signs = [0 for _ in range(1 << 1)]
+    exponents = [0 for _ in range(1 << 8)]
+    mantissas = [0 for _ in range(1 << 7)]
+    i = 0
+    end = len(b)
+    while i < end:
+        # The following is the equivalent of this function call. Inlining has
+        # significant performance improvement.
+        #   sign, exponent, mantissa = unpack_bfloat16(bfloat16_bytes_to_int(b[i:i+2]))
+
+        # This is quite fast but inlining is faster:
+        #   sign, exponent, mantissa = unpack_bfloat16_bytes(b[i], b[i+1])
+        #   signs[sign] += 1
+        #   exponents[exponent] += 1
+        #   mantissas[mantissa] += 1
+
+        # Pretty good but not the fastest implementation:
+        #   bf16 = int.from_bytes(b[i:i+2], byteorder="little")
+        #   signs[(bf16 >> 15) & 0x1] += 1
+        #   exponents[(bf16 >> 7) & 0xFF] += 1
+        #   mantissas[bf16 & 0x7F] += 1
+
+        # Pretty good but not the fastest implementation:
+        #   signs[(b[i+1] & 0x80) >> 7] += 1
+        #   exponents[((b[i+1] & 0x7F) << 1) | ((b[i] & 0x80) >> 7)] += 1
+        #   mantissas[b[i] & 0x7F] += 1
+
+        # The "fastest" implementation (as much as python can be fast lol):
+        b0, b1 = b[i], b[i + 1]
+        signs[(b1 & 0x80) >> 7] += 1
+        exponents[((b1 & 0x7F) << 1) | ((b0 & 0x80) >> 7)] += 1
+        mantissas[b0 & 0x7F] += 1
+        i += 2
+    return signs, exponents, mantissas
+
+
+def print_histograms_float(t: torch.Tensor):
+    signs, exponents, mantissas = calc_histograms_float(t)
+    cols, lines = os.get_terminal_size()
+    terminal = f"dumb {cols} 20"
+    print(signs)
+    print(exponents)
+    print(mantissas)
+    try:
+        # exponents, mantissas,
+        gnuplotlib.plot(
+            numpy.ndarray(signs),
+            _set="logscale y",
+            terminal=terminal,
+            title="Bit usage",
+        )
+    except OSError:
+        print("Please install gnuplot", file=sys.stderr)
+        raise
+
+
+def print_graph_histogram(name: str, t: torch.Tensor):
+    cols, lines = os.get_terminal_size()
+    bins = cols - 10
+    try:
+        counts, bins = t.histogram(bins)
+    except RuntimeError:
+        # Necessary for "non-standard" formats like bfloat16.
+        t = t.dequantize()
+        counts, bins = t.histogram(bins)
+    c = counts.numpy()
+    b = bins[:-1].numpy()
+    terminal = f"dumb {cols} {max(10, lines - 10)}"
+    try:
+        gnuplotlib.plot(b, c, _set="logscale y", terminal=terminal, title=name)
+    except OSError:
+        print("Please install gnuplot", file=sys.stderr)
+        raise
+
+
 def print_bfloat16_components(bfloat16_bytes: bytes):
     """Print the components and decoded value of a bfloat16 number"""
     bfloat16_val = bfloat16_bytes_to_int(bfloat16_bytes)
@@ -92,13 +159,22 @@ def print_bfloat16_components(bfloat16_bytes: bytes):
 
 def analyze_tensors(tensors_dict):
     """Inspect and print information of tensors."""
+    for i, (name, t) in enumerate(tensors_dict.items()):
+        if i == 3:
+            break
+        print(f"Tensor {name} ({t.numel()})")
+        signs, exponents, mantissas = calc_histograms_float(t)
+        print(f"- signs = {signs}")
+        print(f"- exponents = {exponents}")
+        print(f"- mantissas = {mantissas}")
+
+
+def analyze_tensors_old(tensors_dict):
+    """Inspect and print information of tensors."""
     # Calculate the stats upfront.
     stats = {name: TensorStats.create(name, t) for name, t in tensors_dict.items()}
     name_align = max(len(n) for n in tensors_dict)
     size_align = max(len(str(s.length)) for s in stats.values())
-    first_name = next(iter(tensors_dict))
-    first = tensors_dict[first_name].flatten()
-    graph_histogram(first_name, first)
     for name, s in stats.items():
         print(
             f"{name:<{name_align}}: len={s.length:>{size_align}}  "
@@ -106,6 +182,17 @@ def analyze_tensors(tensors_dict):
         )
     print(f"- Total number of weights: {sum(s.length for s in stats.values())}")
     print(f"- Total number of tensors: {len(tensors_dict)}")
+
+    # first_name = next(iter(tensors_dict))
+    # first_name = list(tensors_dict)[20]
+    first_name = "model.layers.4.self_attn.v_proj.weight"
+    first_name = "model.layers.8.input_layernorm.weight"
+    first = tensors_dict[first_name].flatten()
+    print(f"Analyzing {first_name} ({len(first)} weights):")
+    print_histograms_float(first)
+    return
+    print_graph_histogram(first_name, first)
+
     b = read_tensor_bytes(first)
     print(f"- {first_name}: {first.numel()} in {first.dtype}; {len(b)}: {b[:10].hex()}")
     for i in range(5):

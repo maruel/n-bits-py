@@ -1,3 +1,7 @@
+# Copyright 2024 Marc-Antoine Ruel. All rights reserved.
+# Use of this source code is governed under the Apache License, Version 2.0
+# that can be found in the LICENSE file.
+
 # Copyright 2024 Marc-Antoine Ruel
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,6 +15,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+
+def unpack_bfloat16(bfloat16_val):
+    return (bfloat16_val >> 15) & 0x1, (bfloat16_val >> 7) & 0xFF, bfloat16_val & 0x7F
+
+
+def unpack_bfloat16_bytes(b0, b1):
+    # It's really important to not create temporary variables here otherwise it
+    # slows the function down significantly.
+    return (b1 & 0x80) >> 7, ((b1 & 0x7F) << 1) | ((b0 & 0x80) >> 7), b0 & 0x7F
 
 
 def decode_bfloat16(bfloat16_val: int) -> float:
@@ -52,4 +66,4 @@ def decode_bfloat16(bfloat16_val: int) -> float:
 
 
 def bfloat16_bytes_to_int(bfloat16_bytes: bytes):
-    return int.from_bytes(bfloat16_bytes[:2], byteorder="little")
+    return int.from_bytes(bfloat16_bytes, byteorder="little")
