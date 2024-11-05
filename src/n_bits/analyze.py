@@ -4,6 +4,7 @@
 
 import ctypes
 from dataclasses import dataclass
+import math
 import os
 import sys
 
@@ -157,16 +158,51 @@ def print_bfloat16_components(bfloat16_bytes: bytes):
     print(f"- Decoded:  {decode_bfloat16(bfloat16_val)}")
 
 
+def effective(b) -> int:
+    o = 0
+    for i in b:
+        if i:
+            o += 1
+    return o
+
+
 def analyze_tensors(tensors_dict):
     """Inspect and print information of tensors."""
+    maxNameLen = max(len(name) for name in tensors_dict)
+    maxSizeLen = max(len(str(t.numel())) for t in tensors_dict.values())
+    bytesWasted = 0
+    totalBytes = 0
     for i, (name, t) in enumerate(tensors_dict.items()):
-        if i == 3:
-            break
-        print(f"Tensor {name} ({t.numel()})")
         signs, exponents, mantissas = calc_histograms_float(t)
-        print(f"- signs = {signs}")
-        print(f"- exponents = {exponents}")
-        print(f"- mantissas = {mantissas}")
+        e_signs = effective(signs)
+        e_exponents = effective(exponents)
+        e_mantissas = effective(mantissas)
+        b_signs = math.log2(e_signs)
+        b_exponents = math.log2(e_exponents)
+        b_mantissas = math.log2(e_mantissas)
+        wasted = (
+            1
+            - int(math.ceil(b_signs))
+            + 8
+            - int(math.ceil(b_exponents))
+            + 7
+            - int(math.ceil(b_mantissas))
+        )
+        num_el = t.numel()
+        print(
+            f"{name:{maxNameLen}}: {t.numel():{maxSizeLen}}w  "
+            + f"avg={t.mean():4.1f} [{t.min():6.1f}, {t.max():6.1f}]  "
+            + f"sign={b_signs:1.0f}bit  "
+            + f"exponent={b_exponents:3.1f}/8bits  "
+            + f"mantissa={b_mantissas:3.1f}/7bits  "
+            + f"wasted={wasted}/16bits {100.*wasted/16:.1f}% {wasted*num_el/8:8.0f}bytes"
+        )
+        sys.stdout.flush()
+        bytesWasted += int(wasted * num_el / 8)
+        totalBytes += num_el * 2
+    print(
+        f"{bytesWasted} bytes ({100.*bytesWasted/totalBytes:.1f}%) wasted on {totalBytes} bytes total"
+    )
 
 
 def analyze_tensors_old(tensors_dict):
