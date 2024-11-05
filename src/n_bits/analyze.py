@@ -166,6 +166,16 @@ def effective(b) -> int:
     return o
 
 
+def humanBytes(i: int) -> str:
+    if i > 1024 * 1024 * 1024:
+        return f"{float(i)/1024./1024./1024.:.1f}GiB"
+    if i > 1024 * 1024:
+        return f"{float(i)/1024./1024.:.1f}MiB"
+    if i > 1024:
+        return f"{float(i)/1024.:.1f}kiB"
+    return f"{i:d}B"
+
+
 def analyze_tensors(tensors_dict):
     """Inspect and print information of tensors."""
     maxNameLen = max(len(name) for name in tensors_dict)
@@ -195,7 +205,7 @@ def analyze_tensors(tensors_dict):
             + f"sign={b_signs:1.0f}bit  "
             + f"exponent={b_exponents:3.1f}/8bits  "
             + f"mantissa={b_mantissas:3.1f}/7bits  "
-            + f"wasted={wasted}/16bits {100.*wasted/16:.1f}% {wasted*num_el/8:8.0f}bytes"
+            + f"wasted={wasted}/16bits {100.*wasted/16:.1f}% {humanBytes(wasted*num_el//8):>8s}"
         )
         sys.stdout.flush()
         bytesWasted += int(wasted * num_el / 8)
